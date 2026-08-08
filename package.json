@@ -3,10 +3,10 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "build": "pnpm -r --filter @mediaforge/core --filter @mediaforge/react --filter @mediaforge/native build",
-    "test": "pnpm -r --filter @mediaforge/core --filter @mediaforge/react --filter @mediaforge/native test",
-    "typecheck": "pnpm -r --filter @mediaforge/core --filter @mediaforge/react --filter @mediaforge/native typecheck",
-    "lint": "pnpm -r --filter @mediaforge/core --filter @mediaforge/react --filter @mediaforge/native lint"
+    "build": "pnpm -r --filter @mediaforge/* build",
+    "test": "pnpm -r --filter @mediaforge/* test",
+    "typecheck": "pnpm -r --filter @mediaforge/* typecheck",
+    "lint": "pnpm -r --filter @mediaforge/* lint"
   },
   "engines": {
     "node": ">=18"

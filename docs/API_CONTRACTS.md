@@ -678,6 +678,8 @@ export interface GridState<T extends UiMediaItem> {
   hasNextPage: boolean;
 
   loadMore: () => void;
+
+  onSelect?: (item: T, index: number) => void;
 }
 ```
 
@@ -700,8 +702,14 @@ function useMediaGrid<T extends UiMediaItem>(
   getLoadMoreProps: (
     userProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
   ) => React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+  getInfiniteScrollSentinelProps: (
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
 };
 ```
+
+`getInfiniteScrollSentinelProps` is web-only. Native exposes `getListAdapterProps()` / `onEndReached` for `FlatList` wiring instead.
 
 The Grid must support:
 
@@ -760,6 +768,10 @@ export interface LightboxState<
   onClose: () => void;
 
   onIndexChange: (index: number) => void;
+
+  labelledBy?: string;
+
+  label?: string;
 }
 ```
 
@@ -771,6 +783,12 @@ function useMediaLightbox<
 >(
   state: LightboxState<T>
 ): {
+  currentItem: T | null;
+
+  canGoNext: boolean;
+
+  canGoPrevious: boolean;
+
   getDialogProps: (
     userProps?: React.HTMLAttributes<HTMLElement>
   ) => React.HTMLAttributes<HTMLElement>;
@@ -855,6 +873,23 @@ Required behavior:
 * active item callback
 * consumer-controlled rendering
 
+Web does not inject snap CSS. Consumers should apply a CSS contract such as:
+
+```css
+.reel {
+  overflow-y: auto;
+  height: 100%;
+  scroll-snap-type: y mandatory;
+}
+
+.slide {
+  height: 100%;
+  scroll-snap-align: start;
+}
+```
+
+Native returns additional `getListAdapterProps()` for `FlatList` (`pagingEnabled`, `onViewableItemsChanged`, etc.).
+
 ---
 
 # 23. React Native UI Contracts
@@ -876,6 +911,15 @@ HTMLButtonElement
 ```
 
 The shared behavioral concepts are consistent, but platform-specific prop types are allowed.
+
+Native-only adapters:
+
+```ts
+getListAdapterProps()
+onEndReached()
+```
+
+These help consumers wire `FlatList` without forcing a specific list component.
 
 ---
 

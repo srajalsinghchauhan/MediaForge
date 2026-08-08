@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Architecture approved. `@mediaforge/core`, `@mediaforge/react`, and `@mediaforge/native` are implemented; UI packages and apps remain planned.
+> **Status:** Architecture approved. Core, React/Native wrappers, and headless UI packages are implemented; `apps/web` remains planned.
 
 ## System overview
 

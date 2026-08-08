@@ -1,6 +1,6 @@
 # Scope and Decisions
 
-> **Status:** Living decision log for the take-home. Core + React/Native wrappers are implemented; UI packages and apps are not.
+> **Status:** Living decision log for the take-home. Core, wrappers, and UI packages are implemented; `apps/web` is not.
 
 ## Implementation priorities
 
@@ -8,12 +8,10 @@ Ordered for delivery under time constraints:
 
 1. **Documentation & skills** — architecture, contracts, AI skills.
 2. **`media-core`** — client, HTTP, types, errors, cache/dedupe, events. **Done (`@mediaforge/core`).**
-3. **`media-react` / `media-native`** — provider + hooks. **Done (`@mediaforge/react`, `@mediaforge/native`).**
-4. **`media-ui-react`** — Grid, Lightbox, Reel Swiper (headless).
+3. **`media-react` / `media-native`** — provider + hooks. **Done.**
+4. **`media-ui-react` / `media-ui-native`** — Grid, Lightbox, Reel Swiper (headless). **Done.**
 5. **`apps/web`** — Search → Grid → Lightbox; video → Reel; styling owned by app.
-6. **Tests** — core unit tests + boundary checks; hook/component behavior as time allows.
-7. **`media-native` + `media-ui-native`** — API-parity stubs or thin implementations after web path is solid.
-8. **Docs sites / Storybook / Vercel** — polish and public links.
+6. **Docs sites / Storybook / Vercel** — polish and public links.
 
 ---
 
@@ -123,6 +121,10 @@ The assignment explicitly requires React Native packages. Shipping mirrored prov
 | 2026-08-09 | Provider precedence: explicit `client` wins over `apiKey`/`config` |
 | 2026-08-09 | `useMediaItem` tries `getPhoto` then `getVideo` on `NOT_FOUND` because params are id-only |
 | 2026-08-09 | Native package mirrors React hook API and does not import DOM/`react-dom` in source |
+| 2026-08-09 | Implemented `@mediaforge/ui-react` and `@mediaforge/ui-native` as SDK-independent headless hooks |
+| 2026-08-09 | Grid `onSelect` + web infinite-scroll sentinel / native `onEndReached` adapters documented in contracts |
+| 2026-08-09 | Reel snap CSS is a consumer contract; packages do not ship mandatory styles |
+| 2026-08-09 | Native UI uses local RN prop typings + `react-native` peerDep without importing DOM APIs |
 
 ---
 

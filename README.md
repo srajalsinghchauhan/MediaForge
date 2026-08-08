@@ -4,7 +4,7 @@
 
 MediaForge is a senior React/TypeScript take-home project that delivers a portable headless media SDK, framework adapters, and genuinely headless UI components for browsing Pexels media.
 
-> **Development status:** `@mediaforge/core`, `@mediaforge/react`, and `@mediaforge/native` are implemented and tested. UI packages and `apps/web` are **not** implemented yet.
+> **Development status:** Core, React/Native wrappers, and headless UI packages are implemented and tested. `apps/web` is **not** implemented yet.
 
 ---
 
@@ -59,11 +59,11 @@ MediaForge/
 │   └── using-components/
 │       └── SKILL.md
 ├── packages/
-│   ├── media-core/     (implemented as @mediaforge/core)
-│   ├── media-react/    (implemented as @mediaforge/react)
-│   ├── media-native/   (implemented as @mediaforge/native)
-│   ├── media-ui-react/ (planned)
-│   └── media-ui-native/ (planned)
+│   ├── media-core/      (implemented as @mediaforge/core)
+│   ├── media-react/     (implemented as @mediaforge/react)
+│   ├── media-native/    (implemented as @mediaforge/native)
+│   ├── media-ui-react/  (implemented as @mediaforge/ui-react)
+│   └── media-ui-native/ (implemented as @mediaforge/ui-native)
 └── apps/              (planned)
     └── web/
 ```

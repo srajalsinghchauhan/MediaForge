@@ -1,6 +1,6 @@
 # Testing
 
-> **Status:** Strategy approved. Core and wrapper packages use Vitest. UI/app tests remain planned.
+> **Status:** Strategy approved. Core, wrappers, and UI packages use Vitest. App/E2E tests remain planned.
 
 ## Testing strategy
 
@@ -76,30 +76,31 @@ Implemented cases include:
 
 ## Component behavior tests (`media-ui-*`)
 
+Implemented for `@mediaforge/ui-react` and `@mediaforge/ui-native`:
+
 ### Grid
 
-- Renders N items via render prop / mapping
-- Activating item calls `onSelect` with index
-- Keyboard activation works
-- `getItemProps` merges user `onClick`
-- Loading / empty flags exposed without crashing
+- Consumer-controlled rendering
+- `onSelect` + handler merging
+- Web keyboard activation/navigation
+- Load-more + infinite-scroll/end-reached guards
+- Architecture: no SDK imports
 
 ### Lightbox
 
-- Closed → no dialog
-- Open → focus moves into dialog
-- Escape calls `onClose`
-- Arrow keys change index (and clamp at ends)
-- `onDownload` fires when download getter clicked
-- Focus restores on close
+- Dialog/modal accessibility
+- Next/previous/close callbacks
+- Web Escape / arrows / focus move + restore
+- Handler merging
 
 ### Reel Swiper
 
-- `onIndexChange` / `onActiveChange` fire on navigation
-- Active slide flagged in render args
-- Out-of-range index handled safely
+- Active markers
+- Active-item callbacks without duplicates
+- Web observer + keyboard
+- Native list adapter (`pagingEnabled`, viewability)
 
-Visual snapshot tests of styled app chrome are optional and belong to `apps/web`, not UI packages.
+Visual snapshot tests of styled app chrome belong to `apps/web`.
 
 ---
 
