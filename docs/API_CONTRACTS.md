@@ -1,17 +1,64 @@
 # API Contracts
 
-> **Status:** Planned public TypeScript contracts. Names and shapes may be refined during implementation but should stay aligned with this document.
-
-These contracts define the public surface for implementers of `media-core`, `media-react`, `media-native`, `media-ui-react`, and `media-ui-native`.
+> **Status:** Approved implementation contract.
+>
+> This document defines the public TypeScript contracts for `media-core`, `media-react`, `media-native`, `media-ui-react`, and `media-ui-native`.
+>
+> Implementations may use private/internal types, but public APIs must remain aligned with these contracts unless this document is intentionally updated before implementation.
 
 ---
 
-## Media model
+# 1. Contract Principles
+
+The system follows four rules:
+
+1. `media-core` owns data access and SDK behavior.
+2. `media-react` and `media-native` are thin platform wrappers around `media-core`.
+3. UI packages are completely independent of the SDK.
+4. Applications compose SDK wrappers and UI packages.
+
+Dependency direction:
+
+```text
+Web App
+ ├── media-react
+ │     └── media-core
+ │
+ └── media-ui-react
+```
+
+React Native:
+
+```text
+React Native App
+ ├── media-native
+ │     └── media-core
+ │
+ └── media-ui-native
+```
+
+Forbidden:
+
+```text
+media-core → React
+media-core → React Native
+media-core → DOM
+
+media-ui-react → media-core
+media-ui-react → media-react
+
+media-ui-native → media-core
+media-ui-native → media-native
+```
+
+---
+
+# 2. Media Models
 
 ```ts
-type MediaType = 'photo' | 'video';
+export type MediaType = 'photo' | 'video';
 
-interface MediaBase {
+export interface MediaBase {
   id: number | string;
   type: MediaType;
   width: number;
@@ -23,8 +70,9 @@ interface MediaBase {
   avgColor?: string;
 }
 
-interface Photo extends MediaBase {
+export interface Photo extends MediaBase {
   type: 'photo';
+
   src: {
     original: string;
     large: string;
@@ -34,7 +82,7 @@ interface Photo extends MediaBase {
   };
 }
 
-interface VideoFile {
+export interface VideoFile {
   id: number | string;
   quality: string;
   fileType: string;
@@ -43,13 +91,13 @@ interface VideoFile {
   link: string;
 }
 
-interface VideoPicture {
+export interface VideoPicture {
   id: number | string;
   nr: number;
   picture: string;
 }
 
-interface Video extends MediaBase {
+export interface Video extends MediaBase {
   type: 'video';
   duration: number;
   image: string;
@@ -57,17 +105,17 @@ interface Video extends MediaBase {
   videoPictures: VideoPicture[];
 }
 
-type Media = Photo | Video;
+export type Media = Photo | Video;
 ```
 
-UI packages should depend on a **minimal item shape** (see UI props), not necessarily the full Pexels-mapped `Media` type, so they stay decoupled from `media-core`.
+The exact mapped fields may be extended when necessary to preserve useful Pexels metadata.
 
 ---
 
-## Pagination
+# 3. Pagination
 
 ```ts
-interface PageInfo {
+export interface PageInfo {
   page: number;
   perPage: number;
   totalResults?: number;
@@ -75,20 +123,22 @@ interface PageInfo {
   prevPage?: number | null;
 }
 
-interface PageResult<T> {
+export interface PageResult<T> {
   items: T[];
   pageInfo: PageInfo;
 }
 ```
 
-Cursor-style pagination is out of scope unless Pexels requires it; page/perPage is the planned model.
+The core uses page-based pagination because that maps naturally to the Pexels API.
+
+Cursor pagination is out of scope.
 
 ---
 
-## Search and query parameters
+# 4. Search Parameters
 
 ```ts
-interface SearchParams {
+export interface SearchParams {
   query: string;
   page?: number;
   perPage?: number;
@@ -98,114 +148,234 @@ interface SearchParams {
   color?: string;
 }
 
-interface CuratedParams {
+export interface CuratedParams {
   page?: number;
   perPage?: number;
 }
 
-interface MediaItemParams {
+export interface MediaItemParams {
   id: number | string;
-  type: MediaType;
 }
 ```
 
-Planned core methods:
-
-- `searchPhotos(params: SearchParams): Promise<PageResult<Photo>>`
-- `searchVideos(params: SearchParams): Promise<PageResult<Video>>`
-- `curatedPhotos(params?: CuratedParams): Promise<PageResult<Photo>>`
-- `popularVideos(params?: CuratedParams): Promise<PageResult<Video>>` (or Pexels equivalent at implementation time)
-- `getPhoto(id): Promise<Photo>`
-- `getVideo(id): Promise<Video>` (where supported)
-
-Exact Pexels endpoint mapping is finalized in [SDK_DESIGN.md](./SDK_DESIGN.md) during implementation against current Pexels docs.
+The public API exposes separate methods for photos and videos where the upstream Pexels API exposes separate resources.
 
 ---
 
-## Client configuration
+# 5. Media Client Configuration
 
 ```ts
-interface MediaClientConfig {
+export interface CacheConfig {
+  ttlMs?: number;
+  maxEntries?: number;
+}
+
+export interface MediaClientConfig {
   apiKey: string;
+
   baseUrl?: string;
+
   fetch?: typeof fetch;
+
   cache?: CacheConfig | false;
+
   dedupe?: boolean;
+
   defaultPerPage?: number;
+
   eventListeners?: {
     defaultConsole?: boolean;
   };
 }
-
-interface CacheConfig {
-  ttlMs?: number;
-  maxEntries?: number;
-}
 ```
 
+The API key must be configured once through the client.
+
+The key must never:
+
+* appear in media objects
+* appear in event payloads
+* be logged
+* be passed to UI components
+
+---
+
+# 6. MediaClient
+
 ```ts
-interface MediaClient {
-  searchPhotos(params: SearchParams): Promise<PageResult<Photo>>;
-  searchVideos(params: SearchParams): Promise<PageResult<Video>>;
-  curatedPhotos(params?: CuratedParams): Promise<PageResult<Photo>>;
-  popularVideos(params?: CuratedParams): Promise<PageResult<Video>>;
-  getPhoto(id: number | string): Promise<Photo>;
-  getVideo(id: number | string): Promise<Video>;
+export interface MediaClient {
+  searchPhotos(
+    params: SearchParams
+  ): Promise<PageResult<Photo>>;
 
-  on(event: MediaEventType, listener: MediaEventListener): () => void;
-  off(event: MediaEventType, listener: MediaEventListener): void;
-  emit(event: MediaEvent): void;
+  searchVideos(
+    params: SearchParams
+  ): Promise<PageResult<Video>>;
 
-  trackView(payload: MediaViewPayload): void;
-  trackDownload(payload: MediaDownloadPayload): void;
+  curatedPhotos(
+    params?: CuratedParams
+  ): Promise<PageResult<Photo>>;
+
+  popularVideos(
+    params?: CuratedParams
+  ): Promise<PageResult<Video>>;
+
+  getPhoto(
+    id: number | string
+  ): Promise<Photo>;
+
+  getVideo(
+    id: number | string
+  ): Promise<Video>;
+
+  on(
+    type: MediaEventType,
+    listener: MediaEventListener
+  ): () => void;
+
+  off(
+    type: MediaEventType,
+    listener: MediaEventListener
+  ): void;
+
+  trackView(
+    payload: MediaViewPayload
+  ): void;
+
+  trackDownload(
+    payload: MediaDownloadPayload
+  ): void;
 
   clearCache(): void;
 }
 ```
 
+`emit()` is intentionally not part of the public API.
+
+Event emission is controlled internally by the SDK.
+
 ---
 
-## Events
+# 7. Events
+
+The minimum required events are:
 
 ```ts
-type MediaEventType = 'media:view' | 'media:download';
-
-interface MediaViewPayload {
-  mediaId: number | string;
-  mediaType: MediaType;
-  source?: 'grid' | 'lightbox' | 'reel' | 'other';
-  query?: string;
-  page?: number;
-  at?: string;
-}
-
-interface MediaDownloadPayload {
-  mediaId: number | string;
-  mediaType: MediaType;
-  url?: string;
-  source?: 'lightbox' | 'reel' | 'other';
-  at?: string;
-}
-
-type MediaEvent =
-  | { type: 'media:view'; payload: MediaViewPayload }
-  | { type: 'media:download'; payload: MediaDownloadPayload };
-
-type MediaEventListener = (event: MediaEvent) => void;
+export type MediaEventType =
+  | 'view'
+  | 'download';
 ```
 
-Subscribe/unsubscribe:
+### View
 
-- `on` returns an unsubscribe function (preferred).
-- `off` removes a specific listener.
-- Default console listener is enabled unless `eventListeners.defaultConsole === false`.
+```ts
+export interface MediaViewPayload {
+  mediaId: number | string;
+  mediaType: MediaType;
+
+  source?:
+    | 'grid'
+    | 'lightbox'
+    | 'reel'
+    | 'other';
+
+  query?: string;
+
+  page?: number;
+
+  at?: string;
+}
+```
+
+### Download
+
+```ts
+export interface MediaDownloadPayload {
+  mediaId: number | string;
+
+  mediaType: MediaType;
+
+  source?:
+    | 'lightbox'
+    | 'reel'
+    | 'other';
+
+  at?: string;
+}
+```
+
+The download event does **not** need to expose the full media URL because the application can already obtain the media object.
+
+This reduces unnecessary sensitive/implementation data in event payloads.
+
+### Event union
+
+```ts
+export type MediaEvent =
+  | {
+      type: 'view';
+      payload: MediaViewPayload;
+    }
+  | {
+      type: 'download';
+      payload: MediaDownloadPayload;
+    };
+
+export type MediaEventListener =
+  (event: MediaEvent) => void;
+```
+
+### Subscription
+
+```ts
+const unsubscribe = client.on('view', listener);
+
+unsubscribe();
+```
+
+Also supported:
+
+```ts
+client.off('view', listener);
+```
+
+The SDK must support multiple listeners.
+
+The SDK must cleanly remove listeners.
 
 ---
 
-## Errors
+# 8. Default Event Listener
+
+The SDK must register a default console listener unless explicitly disabled.
 
 ```ts
-type MediaErrorCode =
+eventListeners: {
+  defaultConsole: true;
+}
+```
+
+The listener must never log:
+
+* API keys
+* authorization headers
+* secrets
+
+It may log safe event metadata such as:
+
+```text
+media event: view
+mediaId: 123
+mediaType: photo
+source: grid
+```
+
+---
+
+# 9. Errors
+
+```ts
+export type MediaErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
@@ -216,54 +386,122 @@ type MediaErrorCode =
   | 'PARSE'
   | 'UNKNOWN';
 
-interface MediaError extends Error {
+export interface MediaError extends Error {
   name: 'MediaError';
+
   code: MediaErrorCode;
+
   status?: number;
+
   details?: unknown;
+
   retriable?: boolean;
 }
 ```
 
-Callers should use `error.code` for branching. Message strings are for humans/logs only.
+Consumers should branch on:
+
+```ts
+error.code
+```
+
+rather than parsing error messages.
 
 ---
 
-## React hooks (`media-react`) — planned
+# 10. React Provider
 
-```ts
-interface MediaProviderProps {
-  apiKey: string;
+`media-react` exposes:
+
+```tsx
+export interface MediaProviderProps {
+  apiKey?: string;
+
   client?: MediaClient;
-  config?: Omit<MediaClientConfig, 'apiKey'>;
+
+  config?: Omit<
+    MediaClientConfig,
+    'apiKey'
+  >;
+
   children: React.ReactNode;
 }
+```
 
-type QueryStatus = 'idle' | 'loading' | 'success' | 'error';
+Either:
 
-interface AsyncState<T> {
+```tsx
+<MediaProvider apiKey={apiKey}>
+```
+
+or:
+
+```tsx
+<MediaProvider client={client}>
+```
+
+must be supported.
+
+Providing both should have a documented precedence rule.
+
+The Provider owns the React Context.
+
+---
+
+# 11. React Async State
+
+```ts
+export type QueryStatus =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'error';
+
+export interface AsyncState<T> {
   data: T | null;
+
   status: QueryStatus;
+
   error: MediaError | null;
+
   isLoading: boolean;
+
   isError: boolean;
+
   isSuccess: boolean;
+
   refetch: () => Promise<void>;
 }
+```
 
-interface SearchResultState<T> extends AsyncState<PageResult<T>> {
+---
+
+# 12. Search Hook
+
+The React wrapper provides:
+
+```ts
+export interface SearchResultState<T>
+  extends AsyncState<PageResult<T>> {
   page: number;
-  setPage: (page: number) => void;
+
   perPage: number;
-  setPerPage: (n: number) => void;
+
   hasNextPage: boolean;
+
   hasPrevPage: boolean;
-  nextPage: () => void;
-  prevPage: () => void;
+
+  isFetchingNextPage: boolean;
+
+  nextPage: () => Promise<void>;
+
+  prevPage: () => Promise<void>;
 }
+```
 
-function useMediaClient(): MediaClient;
+Hooks:
 
+```ts
 function useSearchPhotos(
   params: SearchParams | null
 ): SearchResultState<Photo>;
@@ -275,157 +513,522 @@ function useSearchVideos(
 function useCuratedPhotos(
   params?: CuratedParams | null
 ): SearchResultState<Photo>;
-
-function useMediaItem(
-  params: MediaItemParams | null
-): AsyncState<Media>;
-
-function useMediaEvents(): {
-  trackView: (payload: MediaViewPayload) => void;
-  trackDownload: (payload: MediaDownloadPayload) => void;
-  subscribe: (type: MediaEventType, listener: MediaEventListener) => () => void;
-};
 ```
 
-`null` params mean “do not fetch” (enabled flag pattern).
-
-`media-native` exposes the same hook names and semantics.
+`null` means the query is disabled.
 
 ---
 
-## UI item shape (framework-agnostic contract for UI packages)
+# 13. Media Item Hook
 
 ```ts
-interface UiMediaItem {
-  id: string;
+function useMediaItem(
+  params: MediaItemParams | null
+): AsyncState<Media>;
+```
+
+The implementation determines whether the requested item is a photo or video through the appropriate core method.
+
+---
+
+# 14. Client Hook
+
+```ts
+function useMediaClient(): MediaClient;
+```
+
+This returns the client configured by `MediaProvider`.
+
+---
+
+# 15. Event Hook
+
+```ts
+interface MediaEventActions {
+  trackView(
+    payload: MediaViewPayload
+  ): void;
+
+  trackDownload(
+    payload: MediaDownloadPayload
+  ): void;
+
+  subscribe(
+    type: MediaEventType,
+    listener: MediaEventListener
+  ): () => void;
+}
+
+function useMediaEvents(): MediaEventActions;
+```
+
+The hook must clean up subscriptions when the component unmounts.
+
+---
+
+# 16. React Native Wrapper
+
+`media-native` follows the same conceptual contract as `media-react`.
+
+The following concepts remain consistent:
+
+```text
+MediaProvider
+useMediaClient
+useSearchPhotos
+useSearchVideos
+useCuratedPhotos
+useMediaItem
+useMediaEvents
+```
+
+Implementation details may differ where required by React Native.
+
+The wrapper must not duplicate Pexels/API business logic.
+
+---
+
+# 17. UI Boundary
+
+UI packages must not consume `Media`, `Photo`, or `Video` from `media-core`.
+
+Instead they use a minimal UI contract.
+
+```ts
+export interface UiMediaItem {
+  id: number | string;
+
   type: 'photo' | 'video';
+
   title?: string;
+
   alt?: string;
+
   previewUrl: string;
+
   width?: number;
+
   height?: number;
+
   duration?: number;
 }
 ```
 
-Apps map `Photo` / `Video` → `UiMediaItem`. UI packages never import `media-core` types.
+The application maps SDK data to UI data:
+
+```text
+Photo / Video
+      ↓
+application mapping
+      ↓
+UiMediaItem
+      ↓
+UI package
+```
+
+This preserves UI independence.
 
 ---
 
-## UI props — Grid (planned)
+# 18. Headless UI Principle
+
+UI packages provide:
+
+* interaction state
+* accessibility behavior
+* event handling
+* navigation
+* prop getters
+* load-more behavior
+
+They do NOT provide:
+
+* Pexels API calls
+* API authentication
+* data fetching
+* application state
+* mandatory CSS
+* mandatory visual design
+
+---
+
+# 19. React Grid
+
+The React Grid is headless.
 
 ```ts
-interface GridProps<T extends UiMediaItem = UiMediaItem> {
+export interface GridState<T extends UiMediaItem> {
   items: T[];
-  columns?: number;
-  gap?: number;
-  isLoading?: boolean;
-  empty?: boolean;
-  onSelect?: (item: T, index: number) => void;
-  getItemKey?: (item: T, index: number) => string;
-  renderItem?: (args: {
-    item: T;
-    index: number;
-    getItemProps: () => ItemPropGetters;
-  }) => React.ReactNode;
-}
 
-interface ItemPropGetters {
-  role?: string;
-  tabIndex?: number;
-  'aria-label'?: string;
-  onClick?: (e: React.MouseEvent | React.KeyboardEvent) => void;
-  onKeyDown?: (e: React.KeyboardEvent) => void;
+  isLoading: boolean;
+
+  isLoadingMore: boolean;
+
+  hasNextPage: boolean;
+
+  loadMore: () => void;
 }
 ```
 
-Headless usage may also expose `useGridState` / `getGridProps` (exact API in [UI_COMPONENTS.md](./UI_COMPONENTS.md)).
+Hook:
+
+```ts
+function useMediaGrid<T extends UiMediaItem>(
+  options: GridState<T>
+): {
+  getGridProps: (
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
+
+  getItemProps: (
+    item: T,
+    index: number,
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
+
+  getLoadMoreProps: (
+    userProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
+  ) => React.ButtonHTMLAttributes<HTMLButtonElement>;
+};
+```
+
+The Grid must support:
+
+* item interaction
+* load-more
+* infinite-scroll integration
+* keyboard interaction
+* accessibility
+
+The actual API request remains outside the UI package.
 
 ---
 
-## UI props — Lightbox (planned)
+# 20. Grid Rendering
+
+The consumer controls rendering:
+
+```tsx
+const grid = useMediaGrid({
+  items,
+  isLoading,
+  isLoadingMore,
+  hasNextPage,
+  loadMore,
+});
+
+return (
+  <div {...grid.getGridProps()}>
+    {items.map((item, index) => (
+      <article
+        {...grid.getItemProps(item, index)}
+      >
+        ...
+      </article>
+    ))}
+  </div>
+);
+```
+
+No visual styling is imposed.
+
+---
+
+# 21. Lightbox
 
 ```ts
-interface LightboxProps<T extends UiMediaItem = UiMediaItem> {
+export interface LightboxState<
+  T extends UiMediaItem
+> {
   open: boolean;
+
   items: T[];
+
   index: number;
+
   onClose: () => void;
-  onIndexChange?: (index: number) => void;
-  onDownload?: (item: T) => void;
-  renderMedia?: (item: T) => React.ReactNode;
-  getOverlayProps?: () => OverlayPropGetters;
-  getCloseButtonProps?: () => ButtonPropGetters;
-  getNextButtonProps?: () => ButtonPropGetters;
-  getPrevButtonProps?: () => ButtonPropGetters;
-}
 
-interface OverlayPropGetters {
-  role: 'dialog';
-  'aria-modal': true;
-  onClick?: (e: React.MouseEvent) => void;
-  onKeyDown?: (e: React.KeyboardEvent) => void;
-}
-
-interface ButtonPropGetters {
-  type?: 'button';
-  'aria-label': string;
-  onClick?: (e: React.MouseEvent) => void;
-  disabled?: boolean;
+  onIndexChange: (index: number) => void;
 }
 ```
 
----
-
-## UI props — Reel Swiper (planned)
+Hook:
 
 ```ts
-interface ReelSwiperProps<T extends UiMediaItem = UiMediaItem> {
-  items: T[];
-  index: number;
-  onIndexChange: (index: number) => void;
-  axis?: 'y' | 'x';
-  onActiveChange?: (item: T, index: number) => void;
-  renderSlide?: (args: {
-    item: T;
-    index: number;
-    isActive: boolean;
-    getSlideProps: () => SlidePropGetters;
-  }) => React.ReactNode;
-}
+function useMediaLightbox<
+  T extends UiMediaItem
+>(
+  state: LightboxState<T>
+): {
+  getDialogProps: (
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
 
-interface SlidePropGetters {
-  role?: string;
-  'aria-hidden'?: boolean;
-  tabIndex?: number;
-  onFocus?: () => void;
+  getCloseButtonProps: (
+    userProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
+  ) => React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+  getNextButtonProps: (
+    userProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
+  ) => React.ButtonHTMLAttributes<HTMLButtonElement>;
+
+  getPreviousButtonProps: (
+    userProps?: React.ButtonHTMLAttributes<HTMLButtonElement>
+  ) => React.ButtonHTMLAttributes<HTMLButtonElement>;
+};
+```
+
+React web implementation must support:
+
+* Escape to close
+* keyboard navigation
+* focus management
+* return focus to trigger
+* dialog semantics
+* `aria-modal`
+* accessible button labels
+
+The consumer controls:
+
+* markup
+* media rendering
+* styling
+* animations
+
+---
+
+# 22. Reel Swiper
+
+The required behavior is vertical paging.
+
+```ts
+export interface ReelSwiperState<
+  T extends UiMediaItem
+> {
+  items: T[];
+
+  activeIndex: number;
+
+  onActiveChange: (
+    item: T,
+    index: number
+  ) => void;
 }
+```
+
+Hook:
+
+```ts
+function useMediaReelSwiper<
+  T extends UiMediaItem
+>(
+  state: ReelSwiperState<T>
+): {
+  getContainerProps: (
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
+
+  getSlideProps: (
+    item: T,
+    index: number,
+    userProps?: React.HTMLAttributes<HTMLElement>
+  ) => React.HTMLAttributes<HTMLElement>;
+};
+```
+
+Required behavior:
+
+* vertical paging
+* snap behavior
+* active item detection
+* active item callback
+* consumer-controlled rendering
+
+---
+
+# 23. React Native UI Contracts
+
+The React Native UI packages follow the same behavioral concepts but use React Native-specific host props.
+
+They must provide equivalent capabilities for:
+
+* Grid
+* Lightbox
+* Reel Swiper
+
+They must not reuse DOM-specific types such as:
+
+```ts
+React.HTMLAttributes
+React.MouseEvent
+HTMLButtonElement
+```
+
+The shared behavioral concepts are consistent, but platform-specific prop types are allowed.
+
+---
+
+# 24. Prop Getter Rules
+
+All prop getters must:
+
+1. Return plain objects.
+2. Be safe to spread onto consumer-controlled host elements.
+3. Merge user-provided handlers where practical.
+4. Provide accessibility behavior.
+5. Never impose visual styling.
+6. Never require CSS classes.
+7. Never contain Pexels/API logic.
+
+Example:
+
+```ts
+getItemProps(item, index, userProps)
+```
+
+must merge the consumer's event handlers with internal interaction behavior rather than silently replacing them.
+
+---
+
+# 25. UI Callback Rules
+
+UI components may emit callbacks such as:
+
+```ts
+onSelect
+onClose
+onIndexChange
+onActiveChange
+```
+
+They must never automatically call the Pexels API.
+
+If the application wants to track a view:
+
+```text
+UI interaction
+      ↓
+application callback
+      ↓
+media-react
+      ↓
+media-core.trackView()
+```
+
+This keeps the UI package independent.
+
+---
+
+# 26. API Key Boundary
+
+Only the SDK/application integration layer knows about the API key.
+
+Never pass:
+
+```ts
+apiKey
+Authorization
+```
+
+to:
+
+* Grid
+* Lightbox
+* Reel Swiper
+* UI hooks
+* UI components
+
+---
+
+# 27. Public Exports
+
+Each package must explicitly define its public exports.
+
+No application should rely on internal package paths.
+
+Preferred:
+
+```ts
+import {
+  MediaClient,
+  MediaError,
+  Photo,
+  Video,
+} from '@mediaforge/core';
+```
+
+Not:
+
+```ts
+import { something } from '@mediaforge/core/src/internal/...';
 ```
 
 ---
 
-## Prop getter conventions
+# 28. Contract Enforcement
 
-All prop getters:
+The implementation must verify:
 
-- Return plain objects safe to spread onto host elements.
-- Merge caller overrides where practical (`get*Props(userProps)`).
-- Encode behavior (keyboard, ARIA) without encoding visual styles.
-- Avoid forcing `className` or inline styles except where required for a11y (e.g. visually hidden instructions may be content, not styles).
+* `media-core` has no React/React Native/DOM imports.
+* UI packages have no SDK imports.
+* wrappers contain no Pexels HTTP implementation.
+* application does not directly import `media-core`.
+* UI components do not contain API-key logic.
+* public types are exported intentionally.
 
----
-
-## Versioning (planned)
-
-- Public contracts live in each package’s exported types.
-- Breaking changes bump the package major version once packages are published.
-- Until first release, this document is the contract source of truth.
+Architecture violations should be caught through linting or automated checks where practical.
 
 ---
 
-## Related documents
+# 29. Contract Changes
 
-- [SDK_DESIGN.md](./SDK_DESIGN.md)
-- [UI_COMPONENTS.md](./UI_COMPONENTS.md)
-- [skills/wiring-data/SKILL.md](../skills/wiring-data/SKILL.md)
-- [skills/using-components/SKILL.md](../skills/using-components/SKILL.md)
+Until the first implementation is complete, this document is the contract source of truth.
+
+If implementation reveals a genuine problem:
+
+1. Update this document.
+2. Explain the reason in `SCOPE_AND_DECISIONS.md`.
+3. Update affected packages.
+4. Update tests.
+5. Update relevant skills/documentation.
+
+Do not silently change public contracts inside implementation code.
+
+---
+
+# 30. Assignment Coverage
+
+These contracts directly support the required assignment features:
+
+* framework-agnostic core
+* Pexels search
+* curated media
+* popular/trending video media
+* pagination
+* single-item fetch
+* authentication
+* typed responses
+* typed errors
+* caching
+* request deduplication
+* view events
+* download events
+* subscription/unsubscription
+* default event logging
+* React Provider
+* React hooks
+* React Native wrapper
+* headless Grid
+* infinite scroll/load-more
+* headless Lightbox
+* keyboard handling
+* focus handling
+* Reel Swiper
+* vertical snap paging
+* active-item detection
+* consumer-controlled markup
+* consumer-controlled styling
+* SDK/UI package separation
+* application-level composition
+
+The final implementation must still be audited against the original assignment before submission.
