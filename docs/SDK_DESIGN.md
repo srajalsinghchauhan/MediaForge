@@ -220,9 +220,56 @@ Public entry: `@mediaforge/core` → `src/index.ts` / `dist/index.js`.
 
 ---
 
-## Adapters (not implemented in this phase)
+## Adapters (`@mediaforge/react`, `@mediaforge/native`)
 
-`media-react` / `media-native` remain planned thin wrappers over `createMediaClient`.
+Both packages are thin React wrappers over `@mediaforge/core`.
+
+```text
+@mediaforge/react  →  @mediaforge/core
+@mediaforge/native →  @mediaforge/core
+```
+
+They share the same conceptual public API:
+
+- `MediaProvider`
+- `useMediaClient`
+- `useSearchPhotos`
+- `useSearchVideos`
+- `useCuratedPhotos`
+- `useMediaItem`
+- `useMediaEvents`
+
+### Responsibilities
+
+| Layer | Owns |
+| --- | --- |
+| Wrappers | Context, hook ergonomics, async/query state, pagination controls, subscription cleanup, stale-request guarding |
+| Core | HTTP, auth header, cache, dedupe, mapping, typed errors, event emitter |
+
+### Provider
+
+- Prefer an explicit `client` prop when provided.
+- Otherwise create a client with `apiKey` + optional `config`.
+- Client identity is memoized; equivalent `config` values do not recreate the client.
+
+### Query behavior
+
+- `null` params disable a query (`idle`, no network).
+- `useCuratedPhotos(undefined)` is enabled with default curated params; `useCuratedPhotos(null)` is disabled.
+- Search hooks keep an internal page synced from filter changes / `params.page`, and expose `nextPage` / `prevPage` from core `pageInfo`.
+- In-flight responses are ignored when a newer request supersedes them.
+- Previous successful data is retained until a newer request succeeds, the query is disabled, or an error for the active request is stored.
+- `isLoading` is true for non-pagination loads; `isFetchingNextPage` is true while a `nextPage()`-initiated request is in flight.
+
+### Events
+
+- `useMediaEvents()` delegates to core `trackView` / `trackDownload` / `on`.
+- Subscriptions created through `subscribe()` are removed on hook unmount.
+
+### Native notes
+
+- `@mediaforge/native` does not import `react-dom` or DOM APIs.
+- It declares `react-native` as a peer dependency for platform packaging, even though the current wrapper surface is hooks/context only.
 
 ---
 

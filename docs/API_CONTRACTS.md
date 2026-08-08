@@ -445,7 +445,11 @@ or:
 
 must be supported.
 
-Providing both should have a documented precedence rule.
+Providing both uses this precedence rule:
+
+1. If `client` is provided, that instance is used and `apiKey` / `config` are ignored for client creation.
+2. Otherwise a client is created with `createMediaClient({ apiKey, ...config })`.
+3. If neither a valid `client` nor a non-empty `apiKey` is provided, the provider throws.
 
 The Provider owns the React Context.
 
@@ -530,7 +534,11 @@ function useMediaItem(
 ): AsyncState<Media>;
 ```
 
-The implementation determines whether the requested item is a photo or video through the appropriate core method.
+Because `MediaItemParams` only includes `id`, the wrappers resolve the item as follows:
+
+1. Call `client.getPhoto(id)`.
+2. If that fails with `NOT_FOUND`, call `client.getVideo(id)`.
+3. Any other photo error is surfaced without a video fallback.
 
 ---
 

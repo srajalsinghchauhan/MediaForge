@@ -1,6 +1,6 @@
 # Testing
 
-> **Status:** Strategy approved. `@mediaforge/core` unit + architecture tests are implemented with Vitest.
+> **Status:** Strategy approved. Core and wrapper packages use Vitest. UI/app tests remain planned.
 
 ## Testing strategy
 
@@ -16,14 +16,12 @@ MediaForge will use a layered test approach matching package boundaries:
 
 Prefer fast unit tests; keep E2E minimal under time constraints (see [SCOPE_AND_DECISIONS.md](./SCOPE_AND_DECISIONS.md)).
 
-### Planned tooling (to be chosen at implementation)
+### Tooling in use
 
-- Vitest or Jest for units
-- Testing Library for React hooks/components
-- MSW or mock `fetch` for HTTP
-- dependency-cruiser / eslint boundaries for architecture tests
-
-Do not install tools until implementation begins.
+- Vitest for units/hooks
+- Testing Library (`@testing-library/react`) for provider/hook tests
+- Mock/`fake` `MediaClient` at the wrapper boundary (no live Pexels calls)
+- Package `scripts/check-boundaries.mjs` for import/dependency architecture checks
 
 ---
 
@@ -60,15 +58,19 @@ Planned cases:
 
 ## Hook tests (`media-react` / `media-native`)
 
-Planned cases:
+Implemented cases include:
 
+- Provider client injection, apiKey creation, client-precedence, missing provider errors
 - `params: null` → no fetch, `idle`
 - Successful search → `success` + data
 - Failed search → `error` with typed code
 - `nextPage` / `prevPage` update page and refetch
 - `refetch` repeats current params
-- Unmount does not set state after resolve (no memory leak warnings)
-- `useMediaEvents` subscribe cleanup on unmount
+- Stale responses ignored after param changes
+- `useMediaItem` photo hit + video fallback on `NOT_FOUND`
+- `useMediaEvents` track/subscribe/unsubscribe + unmount cleanup
+- Strict Mode subscription sanity
+- Package dependency boundary tests
 
 ---
 
