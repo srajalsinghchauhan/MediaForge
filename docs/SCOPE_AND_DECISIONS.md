@@ -1,13 +1,13 @@
 # Scope and Decisions
 
-> **Status:** Living decision log for the take-home. Specs exist; implementation has not started.
+> **Status:** Living decision log for the take-home. `@mediaforge/core` is implemented; other packages are not.
 
 ## Implementation priorities
 
 Ordered for delivery under time constraints:
 
-1. **Documentation & skills** (this stage) — architecture, contracts, AI skills.
-2. **`media-core`** — client, HTTP, types, errors, cache/dedupe, events.
+1. **Documentation & skills** — architecture, contracts, AI skills.
+2. **`media-core`** — client, HTTP, types, errors, cache/dedupe, events. **Done (`@mediaforge/core`).**
 3. **`media-react`** — provider + search/pagination/events hooks.
 4. **`media-ui-react`** — Grid, Lightbox, Reel Swiper (headless).
 5. **`apps/web`** — Search → Grid → Lightbox; video → Reel; styling owned by app.
@@ -22,13 +22,26 @@ Ordered for delivery under time constraints:
 | Area | Simplification | Rationale |
 | --- | --- | --- |
 | Auth | Client-supplied API key; optional public env for demo | Assignment focus is SDK/UI architecture, not a BFF |
-| Cache | In-memory TTL map | Enough to demonstrate dedupe/cache without IndexedDB |
+| Cache | In-memory TTL + max-entries map | Enough to demonstrate dedupe/cache without IndexedDB |
 | Pagination | Page/perPage only | Matches Pexels common patterns |
 | UI styling | No component CSS | Proves headless purity |
 | Native | Mirror APIs; may lag web polish | Shows portability without dual full demos |
 | Analytics | Console default listener | Demonstrates events without vendor lock-in |
 | i18n | Out of scope | Not required for demo |
 | AuthN of end users | Out of scope | Media browsing demo only |
+| Core timeout config | No `timeoutMs` on `MediaClientConfig`; AbortError still maps to `TIMEOUT` | Keeps config aligned with contracts; hosts may abort via custom `fetch` |
+| Video “curated” | Pexels exposes `GET /videos/popular`, not a photo-style curated videos route | Implemented as `popularVideos()` |
+
+## Pexels API limitations / mapping notes
+
+| Topic | Decision |
+| --- | --- |
+| Photos vs videos hosts/paths | Same origin `https://api.pexels.com` with `/v1/*` for photos and `/videos/*` for videos |
+| Photo thumbnail | Mapped from Pexels `src.tiny` (fallback `src.small`) into contract field `src.thumbnail` |
+| Video author | Mapped from Pexels `user.name` / `user.url` into `photographer` / `photographerUrl` |
+| Popular videos | Uses official `GET /videos/popular` |
+| Search `color` on videos | Photo search forwards `color`; video search omits `color` because it is not a stable/documented video filter in the same way |
+| Empty query | Validated in core as `BAD_REQUEST` before network I/O |
 
 ---
 
@@ -102,6 +115,10 @@ The assignment explicitly requires React Native packages. Shipping mirrored prov
 | 2026-08-08 | Enforce UI ↛ core dependency rule |
 | 2026-08-08 | Events are explicit track calls, not implicit on every fetch |
 | 2026-08-08 | README links remain placeholders until real URLs exist |
+| 2026-08-08 | Implemented `@mediaforge/core` with Vitest, boundary lint script, and pnpm workspace |
+| 2026-08-08 | Public event names are `view` / `download` per `API_CONTRACTS.md` (not `media:view`) |
+| 2026-08-08 | No public `emit()`; tracking goes through `trackView` / `trackDownload` |
+| 2026-08-08 | Listener exceptions are swallowed so one bad subscriber cannot break others |
 
 ---
 

@@ -1,6 +1,6 @@
 # Security
 
-> **Status:** Planned policy. Implementation must follow these rules when packages and the app are built.
+> **Status:** Policy in force for `@mediaforge/core`. Remaining packages must follow the same rules when implemented.
 
 ## API key handling
 
@@ -33,7 +33,7 @@ Authorization: <PEXELS_API_KEY>
 Rules:
 
 - Real `.env` files are gitignored (see root `.gitignore`).
-- A committed `.env.example` (planned) lists names without values.
+- A committed `.env.example` lists names without values.
 - CI/CD and Vercel store secrets in the platform secret store, not in repo files.
 
 ---

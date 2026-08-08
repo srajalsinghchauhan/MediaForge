@@ -1,0 +1,14 @@
+{
+  "name": "mediaforge",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "build": "pnpm --filter @mediaforge/core build",
+    "test": "pnpm --filter @mediaforge/core test",
+    "typecheck": "pnpm --filter @mediaforge/core typecheck",
+    "lint": "pnpm --filter @mediaforge/core lint"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

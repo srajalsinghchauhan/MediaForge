@@ -1,6 +1,6 @@
 # Testing
 
-> **Status:** Planned testing strategy. No test suites exist yet.
+> **Status:** Strategy approved. `@mediaforge/core` unit + architecture tests are implemented with Vitest.
 
 ## Testing strategy
 

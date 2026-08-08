@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Planned specification. No packages or application code have been implemented yet.
+> **Status:** Architecture approved. `@mediaforge/core` is implemented; adapters, UI packages, and apps remain planned.
 
 ## System overview
 
@@ -152,10 +152,10 @@ flowchart LR
   BUS --> APP["App-subscribed listeners"]
 ```
 
-Planned event types:
+Event types (implemented in core):
 
-- `media:view` — item entered viewport / opened in lightbox / reel focus
-- `media:download` — user initiated download / open original
+- `view` — item entered viewport / opened in lightbox / reel focus
+- `download` — user initiated download / open original
 
 Subscribe / unsubscribe APIs live on the client. A default console listener is registered unless disabled via configuration.
 

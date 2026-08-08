@@ -7,6 +7,7 @@ coverage/
 *.tsbuildinfo
 .turbo/
 .cache/
+packages/*/dist/
 
 .env
 .env.*

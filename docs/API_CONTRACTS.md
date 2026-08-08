@@ -4,7 +4,10 @@
 >
 > This document defines the public TypeScript contracts for `media-core`, `media-react`, `media-native`, `media-ui-react`, and `media-ui-native`.
 >
+> `@mediaforge/core` implements the media-core sections of this document.
 > Implementations may use private/internal types, but public APIs must remain aligned with these contracts unless this document is intentionally updated before implementation.
+>
+> Runtime note: `MediaError` is exported as a class that satisfies the documented error shape.
 
 ---
 

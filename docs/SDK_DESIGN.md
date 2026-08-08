@@ -1,6 +1,6 @@
 # SDK Design
 
-> **Status:** Planned design for `media-core`, `media-react`, and `media-native`. Not implemented yet.
+> **Status:** `media-core` (`@mediaforge/core`) is implemented. Adapter and UI packages remain planned.
 
 ## Goals
 
@@ -9,39 +9,41 @@
 - Predictable caching and in-flight request deduplication.
 - Typed responses and typed errors.
 - Pluggable events for view / download tracking.
-- Thin framework adapters that only manage lifecycle and React state.
+- Thin framework adapters that only manage lifecycle and React state (planned).
 
 ---
 
 ## MediaClient
 
-`MediaClient` is the primary entry point of `media-core`.
-
-### Construction (planned)
+Public factory:
 
 ```ts
-function createMediaClient(config: MediaClientConfig): MediaClient;
+import { createMediaClient } from '@mediaforge/core';
+
+const client = createMediaClient({
+  apiKey,
+  fetch,
+  baseUrl,
+  cache,
+  dedupe,
+  defaultPerPage,
+  eventListeners,
+});
 ```
 
-Responsibilities:
-
-| Concern | Behavior |
+| Concern | Implemented behavior |
 | --- | --- |
-| Configuration | Validates `apiKey` presence; applies defaults for `baseUrl`, `perPage`, cache, dedupe |
-| Resource methods | Search, curated/trending, get-by-id |
-| HTTP | Performs fetch, maps status codes → `MediaError` |
-| Cache | Optional TTL LRU (or simple Map) keyed by normalized request |
-| Dedupe | Coalesces identical in-flight promises |
-| Events | Emit / subscribe / default console listener |
-| Portability | Uses injected `fetch` when provided |
-
-The client is **stateless regarding UI** and **stateful regarding cache + listeners**.
+| Configuration | Requires non-empty `apiKey`; defaults applied for base URL, perPage, cache, dedupe, console listener |
+| Resource methods | `searchPhotos`, `curatedPhotos`, `getPhoto`, `searchVideos`, `popularVideos`, `getVideo` |
+| HTTP | Shared `HttpClient` using injectable `fetch` |
+| Cache | In-memory TTL + max-entries map |
+| Dedupe | In-flight promise map keyed like the cache |
+| Events | Internal emitter; public `on` / `off` / `trackView` / `trackDownload` (no public `emit`) |
+| Isolation | Each client instance has its own cache, dedupe map, and listeners |
 
 ---
 
 ## HTTP layer
-
-### Planned design
 
 ```
 MediaClient method
@@ -49,28 +51,21 @@ MediaClient method
   → build URL + query string
   → cache key
   → dedupe / cache lookup
-  → http.request(path, init)
-  → parse JSON
+  → HttpClient.getJson
   → map to Photo / Video / PageResult
   → store cache
   → return
 ```
 
-### Requirements
+Defaults:
 
-- Prefer native `fetch` (browser / RN / Node 18+).
-- Inject `fetch` for tests and custom proxies.
-- Support optional `baseUrl` override (Pexels default vs app BFF).
-- Set `Authorization` from config; never log it.
-- Timeouts via `AbortController` (planned optional `timeoutMs`).
-- Map non-2xx to typed `MediaError` with `status` and `code`.
-- Treat invalid JSON as `PARSE`.
+- `baseUrl`: `https://api.pexels.com`
+- Authorization header value: the API key (Pexels convention)
+- Injected `fetch` preferred; otherwise `globalThis.fetch`
 
-### Planned endpoint mapping
+### Endpoint mapping
 
-Aligned with current Pexels REST API at implementation time (verify against official docs):
-
-| Method | Endpoint (illustrative) |
+| Method | Path |
 | --- | --- |
 | `searchPhotos` | `GET /v1/search` |
 | `curatedPhotos` | `GET /v1/curated` |
@@ -79,15 +74,21 @@ Aligned with current Pexels REST API at implementation time (verify against offi
 | `popularVideos` | `GET /videos/popular` |
 | `getVideo` | `GET /videos/videos/:id` |
 
-Response mappers convert Pexels JSON into the contracts in [API_CONTRACTS.md](./API_CONTRACTS.md). Mapping is isolated so Pexels field drift does not leak into apps.
+`baseUrl` must be the API origin (or a proxy that preserves these paths). Do not set it to `.../v1` or video routes will break.
+
+Mappers convert Pexels snake_case payloads into the normalized contracts in [API_CONTRACTS.md](./API_CONTRACTS.md).
+
+Photo `src.thumbnail` maps from Pexels `src.tiny` (fallback `src.small`).
+Video photographer fields map from Pexels `user.name` / `user.url`.
 
 ---
 
 ## Authentication
 
-- API key is required at construction (unless a custom `baseUrl` proxy that ignores client keys is used—still pass a placeholder or dedicated proxy mode if needed).
-- Key is read-only on the instance.
-- `media-core` does not load env vars automatically; the host app passes the key. This keeps core environment-agnostic and avoids accidental bundling assumptions.
+- API key is required at construction.
+- Stored only inside the client HTTP layer.
+- Never returned on media objects, events, or logs.
+- Core does not read environment variables; the host supplies the key.
 
 See [SECURITY.md](./SECURITY.md).
 
@@ -95,160 +96,133 @@ See [SECURITY.md](./SECURITY.md).
 
 ## Caching
 
-### Planned policy
-
-| Setting | Default (planned) |
+| Setting | Default |
 | --- | --- |
-| Enabled | `true` |
-| TTL | e.g. 60_000 ms |
-| Max entries | e.g. 100 |
-| Key | `method + normalized query string` |
+| Enabled | `true` (`cache: false` disables) |
+| TTL | `60_000` ms |
+| Max entries | `100` |
+| Key | `method?sorted=params` |
 
 Rules:
 
-- Cache successful `PageResult` and single-item responses only.
-- Do not cache error responses (or cache only short-circuit 404s if explicitly decided later).
-- `clearCache()` wipes all entries.
-- `cache: false` disables storage (dedupe may still apply).
-
-Cache is in-memory only for v1. Persistent cache is a future improvement.
+- Only successful responses are cached.
+- Errors are not cached.
+- `clearCache()` wipes the instance cache.
+- Cache keys never include the API key.
 
 ---
 
 ## Request deduplication
 
-When `dedupe: true` (planned default):
+When `dedupe: true` (default):
 
-1. Compute the same cache key used for caching.
-2. If a promise for that key is in-flight, return it to all callers.
-3. On settle, remove from the in-flight map.
-4. On success, write through to the result cache.
-
-This prevents duplicate network calls from React Strict Mode double-effects and parallel hook usage with identical params.
+1. Use the same key as the cache.
+2. Concurrent identical callers share one in-flight promise.
+3. The in-flight entry is removed on settle (success or failure).
+4. Failures do not permanently poison the map.
 
 ---
 
 ## Pagination
 
-- Page-based (`page`, `perPage`).
-- `PageResult.pageInfo` exposes `nextPage` / `prevPage` helpers derived from `page`, `perPage`, and `totalResults` when available.
-- Adapters expose `nextPage` / `prevPage` / `setPage` on search hooks.
-- Core does not auto-fetch entire result sets; callers page explicitly.
-
-Edge cases:
-
-- Empty query → `BAD_REQUEST` or no-op at adapter layer (`params: null`).
-- `page < 1` normalized or rejected.
-- Exhausted pages → empty `items`, `nextPage: null`.
+- Page-based (`page`, `per_page` upstream → `perPage` in contracts).
+- `PageInfo.nextPage` / `prevPage` derived from Pexels `next_page` / `prev_page` when present, otherwise from `total_results`.
+- Empty / whitespace search queries throw `BAD_REQUEST` before networking.
+- `page < 1` is normalized to `1`.
 
 ---
 
 ## Events
 
-### Bus
+Public event types:
 
-Simple typed pub/sub inside the client:
+- `view`
+- `download`
 
-- `on` / `off` / `emit`
-- `trackView` / `trackDownload` as ergonomic wrappers
+APIs:
+
+- `on(type, listener) => unsubscribe`
+- `off(type, listener)`
+- `trackView(payload)`
+- `trackDownload(payload)`
+
+Implementation notes:
+
+- No public `emit()`.
+- Fetching media does **not** auto-track views/downloads.
+- A throwing listener is caught so other listeners still run.
+- `at` defaults to an ISO timestamp when omitted.
 
 ### Default console listener
 
-Unless disabled:
+Enabled unless `eventListeners.defaultConsole === false`.
 
-```ts
-// planned behavior
-client.on('*', (event) => {
-  console.info('[media-core]', event.type, event.payload);
-});
+Logs safe lines such as:
+
+```text
+[MediaForge] view
+mediaId: 123
+mediaType: photo
+source: grid
 ```
 
-Exact wildcard vs per-type registration is an implementation detail; public API guarantees view/download can be subscribed.
-
-### Who emits?
-
-- Core methods do **not** automatically emit view/download on fetch.
-- Apps / UI composition call `trackView` / `trackDownload` when UX events occur (lightbox open, reel active slide, download click).
-- `media-react` exposes `useMediaEvents()` for ergonomic access.
+Never logs API keys or Authorization headers.
 
 ---
 
 ## Errors
 
-All failures surface as `MediaError`:
+Failures surface as `MediaError` with `code`:
 
-| HTTP / condition | Code |
-| --- | --- |
-| 401 | `UNAUTHORIZED` |
-| 403 | `FORBIDDEN` |
-| 404 | `NOT_FOUND` |
-| 429 | `RATE_LIMITED` |
-| 400 | `BAD_REQUEST` |
-| Network failure | `NETWORK` |
-| Abort / timeout | `TIMEOUT` |
-| JSON parse | `PARSE` |
-| Other | `UNKNOWN` |
+| Condition | Code | Retriable |
+| --- | --- | --- |
+| 400 | `BAD_REQUEST` | no |
+| 401 | `UNAUTHORIZED` | no |
+| 403 | `FORBIDDEN` | no |
+| 404 | `NOT_FOUND` | no |
+| 429 | `RATE_LIMITED` | yes |
+| Network failure | `NETWORK` | yes |
+| Abort | `TIMEOUT` | yes |
+| Invalid JSON / invalid payload | `PARSE` | no |
+| Other HTTP | `UNKNOWN` | no |
 
-`retriable` hints: `RATE_LIMITED`, `NETWORK`, `TIMEOUT` → true; auth/not found → false.
+Error `details` scrub keys that look like authorization / api key fields.
 
-Adapters should set hook `error` to this object without wrapping away the `code`.
+---
+
+## Package layout
+
+```text
+packages/media-core/
+  src/
+    index.ts
+    client/
+    cache/
+    events/
+    errors/
+    http/
+    mappers/
+    types/
+  tests/
+```
+
+Public entry: `@mediaforge/core` → `src/index.ts` / `dist/index.js`.
 
 ---
 
 ## Portability
 
-`media-core` constraints:
+`media-core` constraints (enforced by lint script + architecture tests):
 
-- TypeScript targeting a modern ES baseline.
-- No `window`, `document`, `localStorage`.
-- No React imports.
-- No React Native imports.
-- Testable under Node with a mock `fetch`.
-
-`media-react` / `media-native`:
-
-- Create or accept a `MediaClient`.
-- Hold it in context.
-- Mirror hook APIs so apps can share mental models across platforms.
-
-```mermaid
-flowchart TB
-  CORE["media-core\nMediaClient"]
-  R["media-react\nMediaProvider + hooks"]
-  N["media-native\nMediaProvider + hooks"]
-  R --> CORE
-  N --> CORE
-```
+- No `react` / `react-dom` / `react-native` imports
+- No `window` / `document` / `localStorage` usage
+- Testable in Node with mock `fetch`
 
 ---
 
-## Adapter design (`media-react` / `media-native`)
+## Adapters (not implemented in this phase)
 
-Planned responsibilities only:
-
-1. Provide context with a stable client instance.
-2. Translate async client calls into hook state (`status`, `data`, `error`).
-3. Re-run on param changes; respect `null` params as disabled.
-4. Expose pagination controls.
-5. Bridge events.
-
-Adapters must not:
-
-- Own HTTP
-- Own cache policy beyond passing config through
-- Render UI
-- Import UI packages
-
----
-
-## Testing hooks for the SDK
-
-- Inject mock `fetch`.
-- Disable cache/dedupe for isolated tests.
-- Assert mapper output snapshots.
-- Assert dedupe: N parallel identical calls → 1 network.
-
-Details in [TESTING.md](./TESTING.md).
+`media-react` / `media-native` remain planned thin wrappers over `createMediaClient`.
 
 ---
 
@@ -257,3 +231,4 @@ Details in [TESTING.md](./TESTING.md).
 - [API_CONTRACTS.md](./API_CONTRACTS.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 - [SECURITY.md](./SECURITY.md)
+- [SCOPE_AND_DECISIONS.md](./SCOPE_AND_DECISIONS.md)

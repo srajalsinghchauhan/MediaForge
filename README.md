@@ -4,7 +4,7 @@
 
 MediaForge is a senior React/TypeScript take-home project that delivers a portable headless media SDK, framework adapters, and genuinely headless UI components for browsing Pexels media.
 
-> **Development status:** Specification and architecture only. No SDK, UI packages, or application source code has been implemented yet. All APIs and behaviors described in this repository are **planned**.
+> **Development status:** `@mediaforge/core` (`packages/media-core`) is implemented and tested. React adapters, UI packages, and `apps/web` are **not** implemented yet.
 
 ---
 
@@ -58,12 +58,12 @@ MediaForge/
 │   │   └── SKILL.md
 │   └── using-components/
 │       └── SKILL.md
-├── packages/          (planned)
-│   ├── media-core/
-│   ├── media-react/
-│   ├── media-native/
-│   ├── media-ui-react/
-│   └── media-ui-native/
+├── packages/
+│   ├── media-core/    (implemented as @mediaforge/core)
+│   ├── media-react/   (planned)
+│   ├── media-native/  (planned)
+│   ├── media-ui-react/ (planned)
+│   └── media-ui-native/ (planned)
 └── apps/              (planned)
     └── web/
 ```
@@ -116,6 +116,22 @@ The web application will demonstrate:
 
 ---
 
-## Getting started
+## Getting started (`@mediaforge/core`)
 
-Implementation has not started. See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the planned local development workflow once packages exist.
+```bash
+pnpm install
+pnpm --filter @mediaforge/core test
+pnpm --filter @mediaforge/core build
+```
+
+```ts
+import { createMediaClient } from '@mediaforge/core';
+
+const client = createMediaClient({
+  apiKey: process.env.PEXELS_API_KEY!,
+});
+
+const photos = await client.searchPhotos({ query: 'mountains' });
+```
+
+See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the broader monorepo workflow once more packages exist.
