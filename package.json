@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
+    "dev": "pnpm --filter @mediaforge/web dev",
     "build": "pnpm -r --filter @mediaforge/* build",
     "test": "pnpm -r --filter @mediaforge/* test",
     "typecheck": "pnpm -r --filter @mediaforge/* typecheck",

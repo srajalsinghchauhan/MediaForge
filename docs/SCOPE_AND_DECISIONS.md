@@ -1,17 +1,17 @@
 # Scope and Decisions
 
-> **Status:** Living decision log for the take-home. Core, wrappers, and UI packages are implemented; `apps/web` is not.
+> **Status:** Living decision log for the take-home. Core, wrappers, UI packages, and `apps/web` are implemented. Hosted deploy/docs sites remain.
 
 ## Implementation priorities
 
 Ordered for delivery under time constraints:
 
 1. **Documentation & skills** — architecture, contracts, AI skills.
-2. **`media-core`** — client, HTTP, types, errors, cache/dedupe, events. **Done (`@mediaforge/core`).**
+2. **`media-core`** — client, HTTP, types, errors, cache/dedupe, events. **Done.**
 3. **`media-react` / `media-native`** — provider + hooks. **Done.**
 4. **`media-ui-react` / `media-ui-native`** — Grid, Lightbox, Reel Swiper (headless). **Done.**
-5. **`apps/web`** — Search → Grid → Lightbox; video → Reel; styling owned by app.
-6. **Docs sites / Storybook / Vercel** — polish and public links.
+5. **`apps/web`** — Search → Grid → Lightbox; video → Reel. **Done.**
+6. **Docs sites / Storybook / Vercel deploy** — polish and public links.
 
 ---
 
@@ -125,6 +125,9 @@ The assignment explicitly requires React Native packages. Shipping mirrored prov
 | 2026-08-09 | Grid `onSelect` + web infinite-scroll sentinel / native `onEndReached` adapters documented in contracts |
 | 2026-08-09 | Reel snap CSS is a consumer contract; packages do not ship mandatory styles |
 | 2026-08-09 | Native UI uses local RN prop typings + `react-native` peerDep without importing DOM APIs |
+| 2026-08-09 | Implemented `apps/web` with Vite; app wires `@mediaforge/react` + `@mediaforge/ui-react` only |
+| 2026-08-09 | App accumulates paged results for infinite scroll; SDK page responses remain page-scoped |
+| 2026-08-09 | App maps Photo/Video → UiMediaItem; UI packages stay Pexels-agnostic |
 
 ---
 

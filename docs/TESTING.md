@@ -1,6 +1,6 @@
 # Testing
 
-> **Status:** Strategy approved. Core, wrappers, and UI packages use Vitest. App/E2E tests remain planned.
+> **Status:** Strategy approved. Core, wrappers, UI packages, and `apps/web` use Vitest. Hosted E2E remains optional.
 
 ## Testing strategy
 

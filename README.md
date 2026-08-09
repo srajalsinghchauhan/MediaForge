@@ -4,7 +4,7 @@
 
 MediaForge is a senior React/TypeScript take-home project that delivers a portable headless media SDK, framework adapters, and genuinely headless UI components for browsing Pexels media.
 
-> **Development status:** Core, React/Native wrappers, and headless UI packages are implemented and tested. `apps/web` is **not** implemented yet.
+> **Development status:** Core, wrappers, headless UI packages, and `apps/web` are implemented and tested. Hosted deployment / docs sites remain pending.
 
 ---
 
@@ -64,8 +64,8 @@ MediaForge/
 │   ├── media-native/    (implemented as @mediaforge/native)
 │   ├── media-ui-react/  (implemented as @mediaforge/ui-react)
 │   └── media-ui-native/ (implemented as @mediaforge/ui-native)
-└── apps/              (planned)
-    └── web/
+└── apps/
+    └── web/             (implemented as @mediaforge/web)
 ```
 
 ---
@@ -107,12 +107,12 @@ MediaForge/
 
 ---
 
-## Planned demo flows
+## Demo flows
 
-The web application will demonstrate:
+`apps/web` demonstrates:
 
-1. **Search → Grid → Lightbox** — text search, results grid, item detail in a lightbox.
-2. **Video results → Reel-style view** — video results presented via the Reel Swiper.
+1. **Search → Grid → Lightbox**
+2. **Video results → Reel-style view** with active-item view tracking
 
 ---
 
@@ -120,19 +120,23 @@ The web application will demonstrate:
 
 ```bash
 pnpm install
+cp apps/web/.env.example apps/web/.env
+```
+
+Set `VITE_PEXELS_API_KEY` in `apps/web/.env`, then:
+
+```bash
+pnpm dev
+```
+
+Other commands:
+
+```bash
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
 ```
 
-```ts
-import { createMediaClient } from '@mediaforge/core';
-import { MediaProvider, useSearchPhotos } from '@mediaforge/react';
-
-const client = createMediaClient({
-  apiKey: process.env.PEXELS_API_KEY!,
-});
-```
-
-See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for the broader monorepo workflow once UI/app packages exist.
+Web app details: [apps/web/README.md](./apps/web/README.md)  
+Deployment notes: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)

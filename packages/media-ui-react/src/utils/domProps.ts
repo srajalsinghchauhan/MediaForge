@@ -6,12 +6,12 @@ import type {
 } from 'react';
 
 export type WebElementProps = HTMLAttributes<HTMLElement> & {
-  ref?: Ref<HTMLElement | null>;
+  ref?: Ref<HTMLElement>;
   style?: CSSProperties;
   [key: `data-${string}`]: string | number | undefined;
 };
 
 export type WebButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  ref?: Ref<HTMLButtonElement | null>;
+  ref?: Ref<HTMLButtonElement>;
   [key: `data-${string}`]: string | number | undefined;
 };

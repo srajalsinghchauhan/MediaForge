@@ -1,40 +1,51 @@
 # Deployment
 
-> **Status:** Planned deployment and local development workflow. Packages and apps are not implemented yet.
+> **Status:** Local web app is implemented. Hosted deployment remains pending.
 
-## Local development (planned)
+## Local development
 
 ### Prerequisites
 
-- Node.js LTS
-- Package manager decided at implementation (npm / pnpm / yarn — prefer one lockfile)
-- Pexels API key from the Pexels developer portal
+- Node.js 18+
+- pnpm 9+
+- Pexels API key
 
-### Planned workspace commands
-
-Exact scripts will be added with the monorepo tooling. Expected shape:
+### Install and run
 
 ```bash
-# install
 pnpm install
-
-# develop web demo
-pnpm --filter web dev
-
-# build all packages
-pnpm -r build
-
-# test
-pnpm -r test
-
-# typecheck
-pnpm -r typecheck
+cp apps/web/.env.example apps/web/.env
 ```
 
-### Repository layout (planned)
+Set `VITE_PEXELS_API_KEY` in `apps/web/.env`, then:
 
+```bash
+pnpm dev
 ```
-apps/web                 # demo application
+
+App URL: `http://localhost:5173`
+
+### Workspace commands
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+Package filter examples:
+
+```bash
+pnpm --filter @mediaforge/web dev
+pnpm --filter @mediaforge/web build
+pnpm --filter @mediaforge/core test
+```
+
+### Repository layout
+
+```text
+apps/web
 packages/media-core
 packages/media-react
 packages/media-native
@@ -42,111 +53,75 @@ packages/media-ui-react
 packages/media-ui-native
 ```
 
-Internal packages are consumed via workspace protocol during development.
-
 ---
 
 ## Environment variables
 
-| Variable | Required for | Notes |
+| Variable | Scope | Notes |
 | --- | --- | --- |
-| `PEXELS_API_KEY` | Server proxy (if used) | Secret; never commit |
-| `VITE_PEXELS_API_KEY` or `NEXT_PUBLIC_PEXELS_API_KEY` | Client demo | Visible in browser; demo-only |
+| `VITE_PEXELS_API_KEY` | `apps/web` | Required for the demo app; visible in the browser bundle |
+| `PEXELS_API_KEY` | Future BFF/proxy | Preferred for production |
 
-Setup (planned):
+Rules:
 
-1. Copy `.env.example` → `.env.local` (or `.env`).
-2. Paste the Pexels key.
-3. Start the web app.
+- Real `.env` files are gitignored
+- Commit only `.env.example` placeholders
+- Never log the key
 
-See [SECURITY.md](./SECURITY.md) for client-side key limitations.
+See [SECURITY.md](./SECURITY.md).
 
 ---
 
 ## Builds
 
-| Target | Output (planned) |
+| Target | Output |
 | --- | --- |
-| `media-core` | ESM/CJS + `.d.ts` |
-| `media-react` | ESM/CJS + `.d.ts` |
-| `media-native` | ESM/CJS + `.d.ts` |
-| `media-ui-react` | ESM/CJS + `.d.ts` |
-| `media-ui-native` | ESM/CJS + `.d.ts` |
-| `apps/web` | Static or SSR build for hosting |
-
-Libraries should be bundler-friendly (externalize `react` / `react-native`).
+| `@mediaforge/core` | `packages/media-core/dist` |
+| `@mediaforge/react` | `packages/media-react/dist` |
+| `@mediaforge/native` | `packages/media-native/dist` |
+| `@mediaforge/ui-react` | `packages/media-ui-react/dist` |
+| `@mediaforge/ui-native` | `packages/media-ui-native/dist` |
+| `@mediaforge/web` | `apps/web/dist` (Vite static build) |
 
 ---
 
-## Vercel deployment (planned)
+## Vercel deployment (prepared, not deployed in this phase)
 
-The demo web app is intended to deploy to Vercel.
+Recommended Vercel project settings for the monorepo:
 
-### Steps (planned)
+| Setting | Value |
+| --- | --- |
+| Framework preset | Vite |
+| Root directory | `apps/web` |
+| Install command | `pnpm install` from repo root (enable monorepo / include root) |
+| Build command | `pnpm --filter @mediaforge/web build` from repo root |
+| Output directory | `apps/web/dist` |
+| Env var | `VITE_PEXELS_API_KEY` |
 
-1. Connect the GitHub repository to Vercel.
-2. Set the project root / monorepo filter for `apps/web`.
-3. Configure env vars in the Vercel dashboard (`PEXELS_API_KEY` or public variant used by the app).
-4. Build command and output directory follow the chosen app framework (Vite `dist`, Next `.next`, etc.).
-5. Confirm preview deployments work on PRs.
+Notes:
 
-### Notes
-
-- Do not embed keys in Vercel build logs intentionally.
-- Production should prefer a server proxy when moving beyond the take-home demo.
-- README live application link remains `_TBD_` until a deployment exists.
+- Build must be able to resolve workspace packages (`@mediaforge/react`, `@mediaforge/ui-react`, and transitive `@mediaforge/core`)
+- Prefer installing from the repository root so pnpm workspaces link correctly
+- Do not commit secrets
+- Production should eventually proxy Pexels instead of exposing a browser key
 
 ```mermaid
 flowchart LR
   GH["GitHub repo"] --> Vercel["Vercel build"]
-  Vercel --> ENV["Env: API key"]
-  Vercel --> CDN["Hosted apps/web"]
+  Vercel --> ENV["VITE_PEXELS_API_KEY"]
+  Vercel --> CDN["Hosted apps/web dist"]
 ```
 
 ---
 
-## SDK documentation (planned)
+## SDK / component docs sites
 
-Options when implementation lands:
+Still planned:
 
-- TypeDoc / API Extractor generated from `media-core` and `media-react` exports
-- Or a small docs site (e.g. VitePress) describing install + usage
+- TypeDoc or VitePress for SDK docs
+- Storybook / MDX for headless UI recipes
 
-Hosted URL will be linked from the root README when available (currently `_TBD_`).
-
-Minimum content:
-
-- Installation
-- `createMediaClient` / `MediaProvider`
-- Search + pagination examples
-- Events
-- Error handling
-- Package boundary rules
-
----
-
-## Component documentation (planned)
-
-Options:
-
-- Storybook for `media-ui-react` (unstyled recipes + a11y notes)
-- Or MDX examples showing prop getters + app-provided CSS
-
-Hosted URL remains `_TBD_` until published.
-
-Minimum stories/examples:
-
-- Grid with selection
-- Lightbox open/close / keyboard
-- Reel Swiper active slide
-- Correct vs incorrect composition with data hooks (link to skills)
-
----
-
-## CI (planned, optional under time constraints)
-
-- Install, typecheck, unit tests, boundary checks on PR
-- Preview deploy via Vercel
+README links remain `_TBD_` until published.
 
 ---
 
@@ -154,4 +129,4 @@ Minimum stories/examples:
 
 - [SECURITY.md](./SECURITY.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [AI_USAGE.md](./AI_USAGE.md)
+- [apps/web/README.md](../apps/web/README.md)

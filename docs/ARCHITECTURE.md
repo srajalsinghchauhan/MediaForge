@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** Architecture approved. Core, React/Native wrappers, and headless UI packages are implemented; `apps/web` remains planned.
+> **Status:** Architecture approved. Core, wrappers, UI packages, and `apps/web` are implemented.
 
 ## System overview
 
